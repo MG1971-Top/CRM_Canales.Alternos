@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Prospectos Megacable</title>
+    <!-- Bootstrap y FontAwesome -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #f8f9fa; color: #333; }
+        .card { margin-bottom: 1rem; }
+        .btn-priority-alta { background-color: #28a745; color: white; }
+        .btn-priority-media { background-color: #ffc107; color: black; }
+        .btn-priority-baja { background-color: #dc3545; color: white; }
+        .crm-title { font-weight: bold; font-size: 1.5rem; color: #2c3e50; }
+    </style>
+</head>
+<body>
+<div class="container my-4">
+    <h2 class="crm-title text-center mb-4">CRM de Prospectos - Megacable</h2>
+    <!-- Formulario de registro/login -->
+    <div id="authSection">
+        <div class="mb-3">
+            <input type="email" id="email" class="form-control" placeholder="Correo electrónico">
+        </div>
+        <div class="mb-3">
+            <input type="password" id="password" class="form-control" placeholder="Contraseña">
+        </div>
+        <div class="d-grid gap-2">
+            <button class="btn btn-primary" onclick="login()">Login</button>
+            <button class="btn btn-secondary" onclick="register()">Registrar</button>
+            <button class="btn btn-link" onclick="recoverPassword()">¿Olvidaste tu contraseña?</button>
+        </div>
+    </div>
+
+    <!-- Formulario de prospecto -->
+    <div id="prospectForm" style="display:none;">
+        <div class="card p-3">
+            <h5>Nuevo Prospecto</h5>
+            <div class="row">
+                <div class="col-md-6 mb-2">
+                    <input type="text" id="nombre" class="form-control" placeholder="Nombre del prospecto">
+                </div>
+                <div class="col-md-6 mb-2">
+                    <input type="text" id="direccion" class="form-control" placeholder="Dirección del prospecto">
+                </div>
+                <div class="col-md-6 mb-2">
+                    <input type="tel" id="telefono" class="form-control" placeholder="Teléfono (10 dígitos)" maxlength="10">
+                </div>
+                <div class="col-md-6 mb-2">
+                    <select id="paquete" class="form-select">
+                        <option value="">Seleccionar paquete</option>
+                        <option>100mb</option>
+                        <option>200mb</option>
+                        <option>300mb</option>
+                        <option>500mb</option>
+                        <option>1000mb</option>
+                    </select>
+                </div>
+                <div class="col-md-6 mb-2">
+                    <select id="prioridad" class="form-select">
+                        <option value="Alta">Alta</option>
+                        <option value="Media">Media</option>
+                        <option value="Baja">Baja</option>
+                    </select>
+                </div>
+                <div class="col-md-6 mb-2">
+                    <input type="text" id="numeroVendedor" class="form-control" placeholder="Número de vendedor">
+                </div>
+                <div class="col-12 mb-2">
+                    <textarea id="comentarios" class="form-control" placeholder="Comentarios"></textarea>
+                </div>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-success" onclick="guardarRegistro()">Guardar registro</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Listado de tarjetas de prospectos -->
+        <div id="registros" class="my-4"></div>
+
+        <!-- Exportar y eliminar todo -->
+        <div class="text-center my-3">
+            <button class="btn btn-outline-primary me-2" onclick="exportarPDF()">Exportar Todo a PDF</button>
+            <button class="btn btn-outline-success me-2" onclick="exportarExcel()">Exportar Todo a Excel</button>
+            <button class="btn btn-outline-danger" onclick="eliminarTodosRegistros()">Eliminar Todos</button>
+        </div>
+
+        <!-- Gráfico de barras -->
+        <div class="card p-3">
+            <h5>Estadísticas por Prioridad</h5>
+            <canvas id="graficoPrioridades"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- JS principal -->
+<script>
+let usuarioActual = null;
+let folio = 1;
+let registros = [];
+
+function login() {
+    usuarioActual = document.getElementById("email").value;
+    if (usuarioActual) {
+        document.getElementById("authSection").style.display = "none";
+        document.getElementById("prospectForm").style.display = "block";
+        actualizarGrafico();
+    }
+}
+
+function register() {
+    alert("Registro simulado con éxito (función demo). Puedes hacer login directamente.");
+}
+
+function recoverPassword() {
+    alert("Recuperación de contraseña simulada (en producción usar email real). Se enviaría un correo a: " + document.getElementById("email").value);
+}
+
+function generarFolio() {
+    return folio.toString().padStart(8, '0');
+}
+
+function guardarRegistro() {
+    const registro = {
+        folio: generarFolio(),
+        nombre: document.getElementById("nombre").value,
+        direccion: document.getElementById("direccion").value,
+        telefono: document.getElementById("telefono").value,
+        paquete: document.getElementById("paquete").value,
+        prioridad: document.getElementById("prioridad").value,
+        comentarios: document.getElementById("comentarios").value,
+        vendedor: document.getElementById("numeroVendedor").value,
+        fecha: new Date().toLocaleString()
+    };
+    registros.push(registro);
+    folio++;
+    mostrarRegistros();
+    actualizarGrafico();
+}
+
+function mostrarRegistros() {
+    const contenedor = document.getElementById("registros");
+    contenedor.innerHTML = "";
+    registros.forEach((reg, index) => {
+        contenedor.innerHTML += `
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">${reg.nombre} - Folio ${reg.folio}</h5>
+                <p class="card-text">${reg.direccion} | ${reg.telefono} | Paquete: ${reg.paquete}</p>
+                <p class="card-text">Prioridad: ${reg.prioridad} | Vendedor: ${reg.vendedor}</p>
+                <p class="card-text"><small class="text-muted">${reg.fecha}</small></p>
+                <p>${reg.comentarios}</p>
+                <button class="btn btn-sm btn-danger me-2" onclick="eliminarRegistro(${index})"><i class="fas fa-trash"></i> Borrar</button>
+                <button class="btn btn-sm btn-outline-dark" onclick='exportarPDFIndividual(${index})'><i class="fas fa-file-pdf"></i> Exportar PDF</button>
+            </div>
+        </div>`;
+    });
+}
+
+function eliminarRegistro(i) {
+    registros.splice(i, 1);
+    mostrarRegistros();
+    actualizarGrafico();
+}
+
+function eliminarTodosRegistros() {
+    if (confirm("¿Deseas borrar todos los registros?")) {
+        registros = [];
+        mostrarRegistros();
+        actualizarGrafico();
+    }
+}
+
+function exportarPDF() {
+    alert("Exportar a PDF (demo): Implementar con jsPDF o similar.");
+}
+
+function exportarPDFIndividual(i) {
+    alert("Exportar PDF individual (demo). Registro: " + registros[i].folio);
+}
+
+function exportarExcel() {
+    alert("Exportar a Excel (demo): Implementar con SheetJS.");
+}
+
+function actualizarGrafico() {
+    const ctx = document.getElementById('graficoPrioridades').getContext('2d');
+    const counts = { Alta: 0, Media: 0, Baja: 0 };
+    registros.forEach(r => counts[r.prioridad]++);
+    if (window.myChart) window.myChart.destroy();
+    window.myChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Alta', 'Media', 'Baja'],
+            datasets: [{
+                label: 'Registros por prioridad',
+                data: [counts.Alta, counts.Media, counts.Baja],
+                backgroundColor: ['#28a745', '#ffc107', '#dc3545']
+            }]
+        }
+    });
+}
+</script>
+</body>
+</html>
